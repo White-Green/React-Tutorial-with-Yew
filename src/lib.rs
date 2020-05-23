@@ -96,13 +96,8 @@ impl Component for Board {
     }
 
     fn view(&self) -> Html {
-        let status = match calculate_winner(&self.props.squares) {
-            SquareState::None => format!("Next player: {}", if self.props.x_is_next { "X" } else { "O" }),
-            state => format!("Winner: {}", state.to_string()),
-        };
         html! {
             <div>
-                <div class="status">{status}</div>
                 <div class="board-row">
                       {self.render_square(0)}
                       {self.render_square(1)}
@@ -202,6 +197,10 @@ impl Component for Game {
     }
 
     fn view(&self) -> Html {
+        let status = match calculate_winner(&self.props.history.last().unwrap_or(&[SquareState::None; 9])) {
+            SquareState::None => format!("Next player: {}", if self.props.x_is_next { "X" } else { "O" }),
+            state => format!("Winner: {}", state.to_string()),
+        };
         let squares = match self.props.history.last() {
             Some(sq) => sq.clone(),
             None => [SquareState::None; 9],
@@ -212,7 +211,7 @@ impl Component for Game {
                     <Board squares=squares x_is_next=self.props.x_is_next onclick=self.link.callback(|i|GameMsg::ClickHandle(i))/>
                 </div>
                 <div class="game-info">
-                    <div>/* status */</div>
+                    <div>{status}</div>
                     <ol>/* TODO */</ol>
                 </div>
             </div>

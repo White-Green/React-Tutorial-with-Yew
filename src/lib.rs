@@ -7,7 +7,6 @@ use web_sys::HtmlElement;
 use web_sys::HtmlAnchorElement;
 use web_sys::Document;
 use web_sys::Exception;
-use std::rc::Rc;
 
 macro_rules! jsarray {
     ($($e:expr),*)=>{{
@@ -64,7 +63,8 @@ enum BoardMsg {
 
 #[derive(Clone)]
 struct BoardProperties {
-    squares: [SquareState; 9]
+    squares: [SquareState; 9],
+    x_is_next: bool,
 }
 
 impl Properties for BoardProperties {
@@ -80,7 +80,8 @@ struct BoardPropertiesBuilder;
 impl BoardPropertiesBuilder {
     fn build(&self) -> BoardProperties {
         BoardProperties {
-            squares: [SquareState::None; 9]
+            squares: [SquareState::None; 9],
+            x_is_next: true,
         }
     }
 }
@@ -96,7 +97,8 @@ impl Component for Board {
     fn update(&mut self, msg: Self::Message) -> bool {
         match msg {
             Self::Message::ClickHandle(i) => {
-                self.props.squares[i] = SquareState::X;
+                self.props.squares[i] = if self.props.x_is_next { SquareState::X } else { SquareState::O };
+                self.props.x_is_next = !self.props.x_is_next;
                 true
             }
         }
@@ -107,10 +109,10 @@ impl Component for Board {
     }
 
     fn view(&self) -> Html {
-        const STATUS: &str = "Next player: X";
+        let status = format!("Next player: {}", if self.props.x_is_next { "X" } else { "O" });
         html! {
             <div>
-                <div class="status">{STATUS}</div>
+                <div class="status">{status}</div>
                 <div class="board-row">
                       {self.render_square(0)}
                       {self.render_square(1)}

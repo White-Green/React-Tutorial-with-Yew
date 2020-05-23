@@ -61,29 +61,11 @@ enum BoardMsg {
     ClickHandle(usize)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Properties)]
 struct BoardProperties {
     squares: [SquareState; 9],
     x_is_next: bool,
-}
-
-impl Properties for BoardProperties {
-    type Builder = BoardPropertiesBuilder;
-
-    fn builder() -> Self::Builder {
-        BoardPropertiesBuilder
-    }
-}
-
-struct BoardPropertiesBuilder;
-
-impl BoardPropertiesBuilder {
-    fn build(&self) -> BoardProperties {
-        BoardProperties {
-            squares: [SquareState::None; 9],
-            x_is_next: true,
-        }
-    }
+    onclick: Callback<usize>,
 }
 
 impl Component for Board {
@@ -97,22 +79,24 @@ impl Component for Board {
     fn update(&mut self, msg: Self::Message) -> bool {
         match msg {
             Self::Message::ClickHandle(i) => {
-                if calculate_winner(self.props.squares) != SquareState::None || self.props.squares[i] != SquareState::None {
-                    return false;
-                }
-                self.props.squares[i] = if self.props.x_is_next { SquareState::X } else { SquareState::O };
-                self.props.x_is_next = !self.props.x_is_next;
+                self.props.onclick.emit(i);
                 true
             }
         }
     }
 
     fn change(&mut self, _props: Self::Properties) -> bool {
-        false
+        if self.props.squares != _props.squares || self.props.x_is_next != _props.x_is_next {
+            self.props.squares = _props.squares;
+            self.props.x_is_next = _props.x_is_next;
+            true
+        } else {
+            false
+        }
     }
 
     fn view(&self) -> Html {
-        let status = match calculate_winner(self.props.squares) {
+        let status = match calculate_winner(&self.props.squares) {
             SquareState::None => format!("Next player: {}", if self.props.x_is_next { "X" } else { "O" }),
             state => format!("Winner: {}", state.to_string()),
         };
@@ -147,7 +131,7 @@ impl Board {
     }
 }
 
-fn calculate_winner(squares: [SquareState; 9]) -> SquareState {
+fn calculate_winner(squares: &[SquareState; 9]) -> SquareState {
     const LINES: [[usize; 3]; 8] = [
         [0, 1, 2],
         [3, 4, 5],
@@ -174,10 +158,15 @@ struct Game {
     props: GameProperties,
 }
 
-enum GameMsg {}
+enum GameMsg {
+    ClickHandle(usize)
+}
 
 #[derive(Clone, Properties)]
-struct GameProperties {}
+struct GameProperties {
+    history: Vec<[SquareState; 9]>,
+    x_is_next: bool,
+}
 
 impl Component for Game {
     type Message = GameMsg;
@@ -187,7 +176,22 @@ impl Component for Game {
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        false
+        match msg {
+            GameMsg::ClickHandle(i) => {
+                let squares = match self.props.history.last() {
+                    Some(sq) => sq,
+                    None => return false
+                };
+                if calculate_winner(squares) != SquareState::None || squares[i] != SquareState::None {
+                    return false;
+                }
+                let mut squares = squares.clone();
+                squares[i] = if self.props.x_is_next { SquareState::X } else { SquareState::O };
+                self.props.history.push(squares);
+                self.props.x_is_next = !self.props.x_is_next;
+                true
+            }
+        }
     }
 
     fn change(&mut self, _props: Self::Properties) -> ShouldRender {
@@ -198,10 +202,14 @@ impl Component for Game {
     }
 
     fn view(&self) -> Html {
+        let squares = match self.props.history.last() {
+            Some(sq) => sq.clone(),
+            None => [SquareState::None; 9],
+        };
         html! {
             <div class="game">
                 <div class="game-board">
-                    <Board />
+                    <Board squares=squares x_is_next=self.props.x_is_next onclick=self.link.callback(|i|GameMsg::ClickHandle(i))/>
                 </div>
                 <div class="game-info">
                     <div>/* status */</div>
@@ -300,7 +308,7 @@ pub fn run_app() {
     init_errors_view(&window, document.clone());
 
     if let Some(entry) = document.get_element_by_id("app") {
-        App::<Game>::new().mount_with_props(entry, GameProperties {});
+        App::<Game>::new().mount_with_props(entry, GameProperties { history: vec![[SquareState::None; 9]], x_is_next: true });
     } else {
         clog!("entry point element is not found.");
     }

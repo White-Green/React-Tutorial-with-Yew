@@ -7,6 +7,7 @@ use web_sys::HtmlElement;
 use web_sys::HtmlAnchorElement;
 use web_sys::Document;
 use web_sys::Exception;
+use std::rc::Rc;
 
 macro_rules! jsarray {
     ($($e:expr),*)=>{{
@@ -27,10 +28,11 @@ struct Square {
     props: SquareProperties,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum SquareState {
     None,
     X,
+    O,
 }
 
 impl ToString for SquareState {
@@ -38,17 +40,20 @@ impl ToString for SquareState {
         match self {
             Self::None => String::from(""),
             Self::X => String::from("X"),
+            Self::O => String::from("O")
         }
     }
 }
 
 enum SquareMsg {
-    UpdateState(SquareState)
+    UpdateState(SquareState),
+    OnClick(MouseEvent),
 }
 
 #[derive(Clone, Properties)]
 struct SquareProperties {
     state: SquareState,
+    onclick: yew::callback::Callback<web_sys::MouseEvent>,
 }
 
 impl Component for Square {
@@ -65,16 +70,25 @@ impl Component for Square {
                 self.props.state = state;
                 true
             }
+            Self::Message::OnClick(e) => {
+                self.props.onclick.emit(e);
+                true
+            }
         }
     }
 
     fn change(&mut self, _props: Self::Properties) -> bool {
-        false
+        if self.props.state != _props.state {
+            self.props.state = _props.state;
+            true
+        } else {
+            false
+        }
     }
 
     fn view(&self) -> Html {
         html! {
-            <button class="square" onclick=self.link.callback(|_|{Self::Message::UpdateState(SquareState::X)})>
+            <button class="square" onclick=self.link.callback(|e|SquareMsg::OnClick(e))>
                 {self.props.state}
             </button>
         }
@@ -86,10 +100,32 @@ struct Board {
     props: BoardProperties,
 }
 
-enum BoardMsg {}
+enum BoardMsg {
+    ClickHandle(usize)
+}
 
-#[derive(Clone, Properties)]
-struct BoardProperties {}
+#[derive(Clone)]
+struct BoardProperties {
+    squares: [SquareState; 9]
+}
+
+impl Properties for BoardProperties {
+    type Builder = BoardPropertiesBuilder;
+
+    fn builder() -> Self::Builder {
+        BoardPropertiesBuilder
+    }
+}
+
+struct BoardPropertiesBuilder;
+
+impl BoardPropertiesBuilder {
+    fn build(&self) -> BoardProperties {
+        BoardProperties {
+            squares: [SquareState::None; 9]
+        }
+    }
+}
 
 impl Component for Board {
     type Message = BoardMsg;
@@ -100,7 +136,12 @@ impl Component for Board {
     }
 
     fn update(&mut self, msg: Self::Message) -> bool {
-        false
+        match msg {
+            Self::Message::ClickHandle(i) => {
+                self.props.squares[i] = SquareState::X;
+                true
+            }
+        }
     }
 
     fn change(&mut self, _props: Self::Properties) -> bool {
@@ -133,9 +174,9 @@ impl Component for Board {
 }
 
 impl Board {
-    fn render_square(&self, i: i32) -> Html {
+    fn render_square(&self, i: usize) -> Html {
         html! {
-            <Square state={SquareState::None}/>
+            <Square state={self.props.squares[i]} onclick=self.link.callback(move|_|{BoardMsg::ClickHandle(i)})/>
         }
     }
 }

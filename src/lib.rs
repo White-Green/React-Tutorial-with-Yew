@@ -154,7 +154,8 @@ struct Game {
 }
 
 enum GameMsg {
-    ClickHandle(usize)
+    ClickHandle(usize),
+    JumpTo(usize),
 }
 
 #[derive(Clone, Properties)]
@@ -186,6 +187,7 @@ impl Component for Game {
                 self.props.x_is_next = !self.props.x_is_next;
                 true
             }
+            GameMsg::JumpTo(i) => { false }
         }
     }
 
@@ -205,6 +207,19 @@ impl Component for Game {
             Some(sq) => sq.clone(),
             None => [SquareState::None; 9],
         };
+        let list = self.props.history.iter().enumerate().map(|(i, _)| {
+            let desc = if i > 0 {
+                format!("Go to move #{}", i)
+            } else {
+                format!("Go to game start")
+            };
+            // let callback = self.link.callback(|_| GameMsg::JumpTo(i));
+            html! {
+                <li>
+                    <button onclick=self.link.callback(move|_| GameMsg::JumpTo(i))>{desc}</button>
+                </li>
+            }
+        });
         html! {
             <div class="game">
                 <div class="game-board">
@@ -212,7 +227,7 @@ impl Component for Game {
                 </div>
                 <div class="game-info">
                     <div>{status}</div>
-                    <ol>/* TODO */</ol>
+                    <ol>{for list}</ol>
                 </div>
             </div>
         }

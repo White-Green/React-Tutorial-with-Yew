@@ -23,11 +23,6 @@ macro_rules! clog {
     ($($e:expr),*)=>{web_sys::console::log(&jsarray!($($e),*))}
 }
 
-struct Square {
-    link: ComponentLink<Self>,
-    props: SquareProperties,
-}
-
 #[derive(Clone, Copy, PartialEq)]
 enum SquareState {
     None,
@@ -45,54 +40,17 @@ impl ToString for SquareState {
     }
 }
 
-enum SquareMsg {
-    UpdateState(SquareState),
-    OnClick(MouseEvent),
-}
-
 #[derive(Clone, Properties)]
 struct SquareProperties {
     state: SquareState,
-    onclick: yew::callback::Callback<web_sys::MouseEvent>,
 }
 
-impl Component for Square {
-    type Message = SquareMsg;
-    type Properties = SquareProperties;
-
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link, props }
-    }
-
-    fn update(&mut self, msg: Self::Message) -> bool {
-        match msg {
-            Self::Message::UpdateState(state) => {
-                self.props.state = state;
-                true
-            }
-            Self::Message::OnClick(e) => {
-                self.props.onclick.emit(e);
-                true
-            }
-        }
-    }
-
-    fn change(&mut self, _props: Self::Properties) -> bool {
-        if self.props.state != _props.state {
-            self.props.state = _props.state;
-            true
-        } else {
-            false
-        }
-    }
-
-    fn view(&self) -> Html {
-        html! {
-            <button class="square" onclick=self.link.callback(|e|SquareMsg::OnClick(e))>
-                {self.props.state}
+fn square(props: SquareProperties, callback: Callback<MouseEvent>) -> Html {
+    html! {
+            <button class="square" onclick=callback>
+                {props.state}
             </button>
         }
-    }
 }
 
 struct Board {
@@ -176,7 +134,7 @@ impl Component for Board {
 impl Board {
     fn render_square(&self, i: usize) -> Html {
         html! {
-            <Square state={self.props.squares[i]} onclick=self.link.callback(move|_|{BoardMsg::ClickHandle(i)})/>
+            {square(SquareProperties{state:self.props.squares[i]},self.link.callback(move|_|{BoardMsg::ClickHandle(i)}))}
         }
     }
 }

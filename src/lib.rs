@@ -97,6 +97,9 @@ impl Component for Board {
     fn update(&mut self, msg: Self::Message) -> bool {
         match msg {
             Self::Message::ClickHandle(i) => {
+                if calculate_winner(self.props.squares) != SquareState::None || self.props.squares[i] != SquareState::None {
+                    return false;
+                }
                 self.props.squares[i] = if self.props.x_is_next { SquareState::X } else { SquareState::O };
                 self.props.x_is_next = !self.props.x_is_next;
                 true
@@ -109,7 +112,10 @@ impl Component for Board {
     }
 
     fn view(&self) -> Html {
-        let status = format!("Next player: {}", if self.props.x_is_next { "X" } else { "O" });
+        let status = match calculate_winner(self.props.squares) {
+            SquareState::None => format!("Next player: {}", if self.props.x_is_next { "X" } else { "O" }),
+            state => format!("Winner: {}", state.to_string()),
+        };
         html! {
             <div>
                 <div class="status">{status}</div>
@@ -139,6 +145,28 @@ impl Board {
             {square(SquareProperties{state:self.props.squares[i]},self.link.callback(move|_|{BoardMsg::ClickHandle(i)}))}
         }
     }
+}
+
+fn calculate_winner(squares: [SquareState; 9]) -> SquareState {
+    const LINES: [[usize; 3]; 8] = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 8],
+        [0, 4, 8],
+        [2, 4, 6],
+    ];
+    for [a, b, c] in LINES.iter() {
+        let a = a.clone();
+        let b = b.clone();
+        let c = c.clone();
+        if squares[a] != SquareState::None && squares[a] == squares[b] && squares[b] == squares[c] {
+            return squares[a];
+        }
+    }
+    SquareState::None
 }
 
 struct Game {

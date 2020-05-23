@@ -30,7 +30,9 @@ struct Square {
 enum SquareMsg {}
 
 #[derive(Clone, Properties)]
-struct SquareProperties {}
+struct SquareProperties {
+    value: i32
+}
 
 impl Component for Square {
     type Message = SquareMsg;
@@ -51,7 +53,7 @@ impl Component for Square {
     fn view(&self) -> Html {
         html! {
             <button class="square">
-                /* TODO */
+                {self.props.value}
             </button>
         }
     }
@@ -111,7 +113,7 @@ impl Component for Board {
 impl Board {
     fn render_square(&self, i: i32) -> Html {
         html! {
-            <Square/>
+            <Square value={i}/>
         }
     }
 }

@@ -27,11 +27,28 @@ struct Square {
     props: SquareProperties,
 }
 
-enum SquareMsg {}
+#[derive(Clone, Copy)]
+enum SquareState {
+    None,
+    X,
+}
+
+impl ToString for SquareState {
+    fn to_string(&self) -> String {
+        match self {
+            Self::None => String::from(""),
+            Self::X => String::from("X"),
+        }
+    }
+}
+
+enum SquareMsg {
+    UpdateState(SquareState)
+}
 
 #[derive(Clone, Properties)]
 struct SquareProperties {
-    value: i32
+    state: SquareState,
 }
 
 impl Component for Square {
@@ -43,7 +60,12 @@ impl Component for Square {
     }
 
     fn update(&mut self, msg: Self::Message) -> bool {
-        false
+        match msg {
+            Self::Message::UpdateState(state) => {
+                self.props.state = state;
+                true
+            }
+        }
     }
 
     fn change(&mut self, _props: Self::Properties) -> bool {
@@ -52,8 +74,8 @@ impl Component for Square {
 
     fn view(&self) -> Html {
         html! {
-            <button class="square">
-                {self.props.value}
+            <button class="square" onclick=self.link.callback(|_|{Self::Message::UpdateState(SquareState::X)})>
+                {self.props.state}
             </button>
         }
     }
@@ -113,7 +135,7 @@ impl Component for Board {
 impl Board {
     fn render_square(&self, i: i32) -> Html {
         html! {
-            <Square value={i}/>
+            <Square state={SquareState::None}/>
         }
     }
 }

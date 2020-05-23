@@ -161,6 +161,7 @@ enum GameMsg {
 #[derive(Clone, Properties)]
 struct GameProperties {
     history: Vec<[SquareState; 9]>,
+    step_number: usize,
     x_is_next: bool,
 }
 
@@ -174,20 +175,23 @@ impl Component for Game {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             GameMsg::ClickHandle(i) => {
-                let squares = match self.props.history.last() {
-                    Some(sq) => sq,
-                    None => return false
-                };
+                let squares = self.props.history.get(self.props.step_number).unwrap_or(&[SquareState::None; 9]);
                 if calculate_winner(squares) != SquareState::None || squares[i] != SquareState::None {
                     return false;
                 }
                 let mut squares = squares.clone();
                 squares[i] = if self.props.x_is_next { SquareState::X } else { SquareState::O };
+                self.props.history = Vec::from(&self.props.history[..=self.props.step_number]);
                 self.props.history.push(squares);
                 self.props.x_is_next = !self.props.x_is_next;
+                self.props.step_number += 1;
                 true
             }
-            GameMsg::JumpTo(i) => { false }
+            GameMsg::JumpTo(i) => {
+                self.props.step_number = i;
+                self.props.x_is_next = i % 2 == 0;
+                true
+            }
         }
     }
 
@@ -199,11 +203,11 @@ impl Component for Game {
     }
 
     fn view(&self) -> Html {
-        let status = match calculate_winner(&self.props.history.last().unwrap_or(&[SquareState::None; 9])) {
+        let status = match calculate_winner(&self.props.history.get(self.props.step_number).unwrap_or(&[SquareState::None; 9])) {
             SquareState::None => format!("Next player: {}", if self.props.x_is_next { "X" } else { "O" }),
             state => format!("Winner: {}", state.to_string()),
         };
-        let squares = match self.props.history.last() {
+        let squares = match self.props.history.get(self.props.step_number) {
             Some(sq) => sq.clone(),
             None => [SquareState::None; 9],
         };
@@ -322,7 +326,7 @@ pub fn run_app() {
     init_errors_view(&window, document.clone());
 
     if let Some(entry) = document.get_element_by_id("app") {
-        App::<Game>::new().mount_with_props(entry, GameProperties { history: vec![[SquareState::None; 9]], x_is_next: true });
+        App::<Game>::new().mount_with_props(entry, GameProperties { history: vec![[SquareState::None; 9]], step_number: 0, x_is_next: true });
     } else {
         clog!("entry point element is not found.");
     }
